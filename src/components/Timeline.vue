@@ -1,114 +1,126 @@
 <script setup lang="ts">
-  import { ref, computed } from 'vue';
-  import { DxTooltip } from 'devextreme-vue';
+import { DxTooltip } from 'devextreme-vue';
+import { computed, ref } from 'vue';
 
-  const { startDate, endDate } = defineProps({
-    startDate: {
-      type: Date,
-      default: () => {
-        const date = new Date();
-        date.setHours(0, 0, 0, 0);
-        date.setDate(date.getDate() - 3);
-        return date;
-      },
+const { startDate, endDate } = defineProps({
+  startDate: {
+    type: Date,
+    default: () => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - 3);
+      return date;
     },
-    endDate: {
-      type: Date,
-      default: () => {
-        const date = new Date();
-        date.setHours(0, 0, 0, 0);
-        date.setDate(date.getDate() + 4);
-        return date;
-      },
+  },
+  endDate: {
+    type: Date,
+    default: () => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() + 4);
+      return date;
     },
-  });
+  },
+});
 
-  const timeline = ref<HTMLElement | null>(null);
-  const isTooltipVisible = ref(false);
-  const tooltipDate = ref<Date | null>(null);
-  const cursorX = ref(0);
+const timeline = ref<HTMLElement | null>(null);
+const selectedDate = ref<Date | null>(null);
+const isTooltipVisible = ref(false);
+const tooltipDate = ref<Date | null>(null);
+const cursorX = ref(0);
 
-  const onMouseMove = (e: MouseEvent) => {
-    isTooltipVisible.value = true;
-    cursorX.value = calculateCursorTimelineX(e.clientX);
-    tooltipDate.value = calculateTimeOnTimelinePosition(cursorX.value);
-  }
+const onMouseMove = (e: MouseEvent) => {
+  isTooltipVisible.value = true;
+  cursorX.value = calculateCursorTimelineX(e.clientX);
+  tooltipDate.value = calculateTimeOnTimelinePosition(cursorX.value);
+};
 
-  const onMouseLeave = () => {
-    isTooltipVisible.value = false;
-  }
+const onMouseLeave = () => {
+  isTooltipVisible.value = false;
+};
 
-  const calculateCursorTimelineX = (clientX: number) => {
-    if (!timeline.value) return 0;
+const onClick = () => {
+  selectedDate.value = calculateTimeOnTimelinePosition(cursorX.value);
+};
 
-    const timelineRect = timeline.value.getBoundingClientRect();
+const calculateCursorTimelineX = (clientX: number) => {
+  if (!timeline.value) return 0;
 
-    // Получаем положение курсора относительно таймлайна
-    return clientX - timelineRect.left;
-  }
+  const timelineRect = timeline.value.getBoundingClientRect();
 
-  const calculateTimeOnTimelinePosition = (timelineX: number) => {
-    if (!timeline.value) return null;
+  // Получаем положение курсора относительно таймлайна
+  return clientX - timelineRect.left;
+};
 
-    const timelineRect = timeline.value.getBoundingClientRect();
-    const timelineWidth = timelineRect.width;
+const calculateTimeOnTimelinePosition = (timelineX: number) => {
+  if (!timeline.value) return null;
 
-    // Получаем положение курсора относительно левого края таймлайна
-    const percentage = timelineX / timelineWidth;
+  const timelineRect = timeline.value.getBoundingClientRect();
+  const timelineWidth = timelineRect.width;
 
-    // Вычисляем соответствующую дату
-    const timeSpan = endDate.getTime() - startDate.getTime();
-    return new Date(startDate.getTime() + percentage * timeSpan);
-  }
+  // Получаем положение курсора относительно левого края таймлайна
+  const percentage = timelineX / timelineWidth;
 
-  const calculateTimelinePositionOnTime = (date: Date) => {
-    if (date.getTime() < startDate.getTime() || date.getTime() > endDate.getTime()) return;
+  // Вычисляем соответствующую дату
+  const timeSpan = endDate.getTime() - startDate.getTime();
+  return new Date(startDate.getTime() + percentage * timeSpan);
+};
 
-    // Полная длительность таймлайна в миллисекундах
-    const timelineDuration = endDate.getTime() - startDate.getTime();
+const calculateTimelinePositionOnTime = (date: Date) => {
+  if (date.getTime() < startDate.getTime() || date.getTime() > endDate.getTime()) return;
 
-    // Длительность от начала таймлайна до целевой даты в миллисекундах
-    const timeSinceStart = date.getTime() - startDate.getTime();
+  // Полная длительность таймлайна в миллисекундах
+  const timelineDuration = endDate.getTime() - startDate.getTime();
 
-    // Отступ слева от начала таймлайна в процентах
-    return (timeSinceStart / timelineDuration) * 100;
-  }
+  // Длительность от начала таймлайна до целевой даты в миллисекундах
+  const timeSinceStart = date.getTime() - startDate.getTime();
 
-  function formatDate(date: Date, withTime: boolean = false) {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+  // Отступ слева от начала таймлайна в процентах
+  return (timeSinceStart / timelineDuration) * 100;
+};
 
-    return withTime ? `${day}.${month}.${year} ${hours}:${minutes}` : `${day}.${month}.${year}`;
-  }
+function formatDate(date: Date, withTime: boolean = false) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
 
-  const cursorTooltipPosition = computed(() => ({
-    my: 'bottom',
-    at: 'top left',
-    offset: `${cursorX.value} 0`,
-  }));
+  return withTime ? `${day}.${month}.${year} ${hours}:${minutes}` : `${day}.${month}.${year}`;
+}
 
-  const labelDates = computed(() => {
-    const result: Date[] = [];
-    const currentDate = new Date(startDate);
-    currentDate.setHours(0, 0, 0, 0);
+const cursorTooltipPosition = computed(() => ({
+  my: 'bottom',
+  at: 'top left',
+  offset: `${cursorX.value} 0`,
+}));
 
-    while (currentDate.getTime() < endDate.getTime()) {
-      if (currentDate.getTime() >= startDate.getTime()) {
-        result.push(new Date(currentDate)); // Добавляем копию текущей даты
-      }
-      currentDate.setDate(currentDate.getDate() + 1); // Переходим на следующий день
+const labelDates = computed(() => {
+  const result: Date[] = [];
+  const currentDate = new Date(startDate);
+  currentDate.setHours(0, 0, 0, 0);
+
+  while (currentDate.getTime() < endDate.getTime()) {
+    if (currentDate.getTime() >= startDate.getTime()) {
+      result.push(new Date(currentDate)); // Добавляем копию текущей даты
     }
+    currentDate.setDate(currentDate.getDate() + 1); // Переходим на следующий день
+  }
 
-    return result;
-  })
+  return result;
+});
+
+const timelineGradient = computed(() => {
+  if (!selectedDate.value) return `linear-gradient(to right, #F9DB99 0, #5F6062 0)`;
+
+  return `linear-gradient(to right, #F9DB99 ${calculateTimelinePositionOnTime(selectedDate.value)}%, #5F6062 ${calculateTimelinePositionOnTime(selectedDate.value)}%)`;
+});
 </script>
 
 <template>
   <div class="container">
-    <div ref="timeline" id="timeline" class="timeline" @mousemove="onMouseMove" @mouseleave="onMouseLeave">
+    <div ref="timeline" id="timeline" class="timeline" @mousemove="onMouseMove" @mouseleave="onMouseLeave"
+         @click="onClick" :style="{ background: timelineGradient }">
       <div
           v-for="(date, index) in labelDates"
           :key="index"
@@ -142,7 +154,7 @@
   position: relative;
   width: 100%;
   height: 8px;
-  background: #ddd;
+  background: linear-gradient(to right, #F9DB99 0, #5F6062 0);
   border-radius: 4px;
   margin-top: 20px;
   cursor: pointer;
