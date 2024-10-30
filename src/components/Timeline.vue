@@ -103,7 +103,7 @@ const selectedDateTooltipPosition = computed(() => {
   if (!timeline.value || !selectedDate.value) return null;
 
   const timelineWidth = timeline.value.getBoundingClientRect().width;
-  const datePosition = calculateTimelinePositionOnTime(selectedDate.value)
+  const datePosition = calculateTimelinePositionOnTime(selectedDate.value);
 
   if (!datePosition) return null;
 
@@ -112,7 +112,7 @@ const selectedDateTooltipPosition = computed(() => {
     at: 'top left',
     offset: `${timelineWidth * datePosition / 100} 0`,
   });
-})
+});
 
 const labelDates = computed(() => {
   const result: Date[] = [];
@@ -121,6 +121,7 @@ const labelDates = computed(() => {
 
   while (currentDate.getTime() < endDate.getTime()) {
     if (currentDate.getTime() >= startDate.getTime()) {
+      // console.log(currentDate.getTime(), startDate.getTime(), currentDate.getTime() === startDate.getTime())
       result.push(new Date(currentDate)); // Добавляем копию текущей даты
     }
     currentDate.setDate(currentDate.getDate() + 1); // Переходим на следующий день
@@ -134,6 +135,7 @@ const timelineGradient = computed(() => {
 
   return `linear-gradient(to right, #F9DB99 ${calculateTimelinePositionOnTime(selectedDate.value)}%, #5F6062 ${calculateTimelinePositionOnTime(selectedDate.value)}%)`;
 });
+
 </script>
 
 <template>
@@ -143,8 +145,12 @@ const timelineGradient = computed(() => {
       <div
           v-for="(date, index) in labelDates"
           :key="index"
-          class="timeline-label"
-          :style="{ left: `calc(${calculateTimelinePositionOnTime(new Date(date))}% + 6px)` }"
+          :class="{
+            'timeline-label': true,
+            'timeline-label--with-line': date.getTime() !== startDate.getTime(),
+            'timeline-label--past-date': selectedDate && date.getTime() < selectedDate?.getTime()
+          }"
+          :style="{ left: `calc(${calculateTimelinePositionOnTime(new Date(date))}% + 5px)` }"
       >
         {{ formatDate(date) }}
       </div>
@@ -160,11 +166,11 @@ const timelineGradient = computed(() => {
       </template>
     </DxTooltip>
     <DxTooltip
-      target="#timeline"
-      :visible="isSelectedDateTooltipVisible"
-      :position="selectedDateTooltipPosition"
-      :hide-on-outside-click="false"
-      >
+        target="#timeline"
+        :visible="isSelectedDateTooltipVisible"
+        :position="selectedDateTooltipPosition"
+        :hide-on-outside-click="false"
+    >
       <template #content>
         {{ selectedDate && formatDate(selectedDate, true) }}
       </template>
@@ -191,11 +197,22 @@ const timelineGradient = computed(() => {
 
 .current-time-mark {
   position: absolute;
-  top: -4px;
+  top: -2px;
   width: 12px;
   height: 12px;
-  background: red;
+  background: #FE3D3D;
   border-radius: 50%;
+
+  &::before {
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    content: '';
+    width: 1px;
+    height: 22px;
+    background: #FE3D3D;
+    transform: translateX(-50%);
+  }
 }
 
 .timeline-label {
@@ -203,15 +220,23 @@ const timelineGradient = computed(() => {
   bottom: -25px;
   font-size: 12px;
   color: #333;
+}
+
+.timeline-label--with-line::before {
+  position: absolute;
+  top: -7px;
+  bottom: 0;
+  left: -5px;
+  content: '';
+  width: 1px;
+  background-color: #333
+}
+
+.timeline-label--past-date {
+  color: #F9DB99;
 
   &::before {
-    position: absolute;
-    top: -7px;
-    bottom: 0;
-    left: -3px;
-    content: '';
-    width: 1px;
-    background-color: #333;
+    background-color: #F9DB99;
   }
 }
 </style>
