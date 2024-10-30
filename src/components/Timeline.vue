@@ -25,22 +25,27 @@ const { startDate, endDate } = defineProps({
 
 const timeline = ref<HTMLElement | null>(null);
 const selectedDate = ref<Date | null>(null);
-const isTooltipVisible = ref(false);
+const isCursorTooltipVisible = ref(false);
+const isSelectedDateTooltipVisible = ref(false);
 const tooltipDate = ref<Date | null>(null);
 const cursorX = ref(0);
 
 const onMouseMove = (e: MouseEvent) => {
-  isTooltipVisible.value = true;
+  isCursorTooltipVisible.value = true;
   cursorX.value = calculateCursorTimelineX(e.clientX);
   tooltipDate.value = calculateTimeOnTimelinePosition(cursorX.value);
 };
 
 const onMouseLeave = () => {
-  isTooltipVisible.value = false;
+  isCursorTooltipVisible.value = false;
 };
 
 const onClick = () => {
   selectedDate.value = calculateTimeOnTimelinePosition(cursorX.value);
+
+  if (selectedDate.value) {
+    isSelectedDateTooltipVisible.value = true;
+  }
 };
 
 const calculateCursorTimelineX = (clientX: number) => {
@@ -55,8 +60,7 @@ const calculateCursorTimelineX = (clientX: number) => {
 const calculateTimeOnTimelinePosition = (timelineX: number) => {
   if (!timeline.value) return null;
 
-  const timelineRect = timeline.value.getBoundingClientRect();
-  const timelineWidth = timelineRect.width;
+  const timelineWidth = timeline.value.getBoundingClientRect().width;
 
   // Получаем положение курсора относительно левого края таймлайна
   const percentage = timelineX / timelineWidth;
@@ -94,6 +98,21 @@ const cursorTooltipPosition = computed(() => ({
   at: 'top left',
   offset: `${cursorX.value} 0`,
 }));
+
+const selectedDateTooltipPosition = computed(() => {
+  if (!timeline.value || !selectedDate.value) return null;
+
+  const timelineWidth = timeline.value.getBoundingClientRect().width;
+  const datePosition = calculateTimelinePositionOnTime(selectedDate.value)
+
+  if (!datePosition) return null;
+
+  return ({
+    my: 'bottom',
+    at: 'top left',
+    offset: `${timelineWidth * datePosition / 100} 0`,
+  });
+})
 
 const labelDates = computed(() => {
   const result: Date[] = [];
@@ -133,11 +152,21 @@ const timelineGradient = computed(() => {
     </div>
     <DxTooltip
         target="#timeline"
-        :visible="isTooltipVisible"
+        :visible="isCursorTooltipVisible"
         :position="cursorTooltipPosition"
     >
       <template #content>
         {{ tooltipDate && formatDate(tooltipDate, true) }}
+      </template>
+    </DxTooltip>
+    <DxTooltip
+      target="#timeline"
+      :visible="isSelectedDateTooltipVisible"
+      :position="selectedDateTooltipPosition"
+      :hide-on-outside-click="false"
+      >
+      <template #content>
+        {{ selectedDate && formatDate(selectedDate, true) }}
       </template>
     </DxTooltip>
   </div>
