@@ -53,9 +53,8 @@
     const timelineRect = timeline.value.getBoundingClientRect();
     const timelineWidth = timelineRect.width;
 
-    // Получаем положение курсора относительно таймлайна
-    const x = timelineX - timelineRect.left;
-    const percentage = x / timelineWidth;
+    // Получаем положение курсора относительно левого края таймлайна
+    const percentage = timelineX / timelineWidth;
 
     // Вычисляем соответствующую дату
     const timeSpan = endDate.getTime() - startDate.getTime();
