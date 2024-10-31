@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import Timeline from './components/Timeline.vue';
 import 'devextreme/dist/css/dx.light.css';
+import TimelinePlayer from './components/TimelinePlayer.vue';
 </script>
 
 <template>
-  <Timeline />
+  <TimelinePlayer />
 </template>
 
 <style scoped>

@@ -1,30 +1,26 @@
 <script setup lang="ts">
 import { DxTooltip } from 'devextreme-vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
-const { startDate, endDate } = defineProps({
+const { startDate, endDate, selectedDate } = defineProps({
   startDate: {
     type: Date,
-    default: () => {
-      const date = new Date();
-      date.setHours(0, 0, 0, 0);
-      date.setDate(date.getDate() - 3);
-      return date;
-    },
+    required: true,
   },
   endDate: {
     type: Date,
-    default: () => {
-      const date = new Date();
-      date.setHours(0, 0, 0, 0);
-      date.setDate(date.getDate() + 4);
-      return date;
-    },
+    required: true,
+  },
+  selectedDate: {
+    type: Date,
+    default: null,
   },
 });
 
+const emit = defineEmits(['update:selectedDate']);
+
 const timeline = ref<HTMLElement | null>(null);
-const selectedDate = ref<Date | null>(null);
+const _selectedDate = ref<Date | null>(selectedDate);
 const isCursorTooltipVisible = ref(false);
 const isSelectedDateTooltipVisible = ref(false);
 const tooltipDate = ref<Date | null>(null);
@@ -41,9 +37,10 @@ const onMouseLeave = () => {
 };
 
 const onClick = () => {
-  selectedDate.value = calculateTimeOnTimelinePosition(cursorX.value);
+  _selectedDate.value = calculateTimeOnTimelinePosition(cursorX.value);
+  emit('update:selectedDate', _selectedDate.value);
 
-  if (selectedDate.value) {
+  if (_selectedDate.value) {
     isSelectedDateTooltipVisible.value = true;
   }
 };
@@ -100,10 +97,10 @@ const cursorTooltipPosition = computed(() => ({
 }));
 
 const selectedDateTooltipPosition = computed(() => {
-  if (!timeline.value || !selectedDate.value) return null;
+  if (!timeline.value || !_selectedDate.value) return null;
 
   const timelineWidth = timeline.value.getBoundingClientRect().width;
-  const datePosition = calculateTimelinePositionOnTime(selectedDate.value);
+  const datePosition = calculateTimelinePositionOnTime(_selectedDate.value);
 
   if (!datePosition) return null;
 
@@ -121,7 +118,6 @@ const labelDates = computed(() => {
 
   while (currentDate.getTime() < endDate.getTime()) {
     if (currentDate.getTime() >= startDate.getTime()) {
-      // console.log(currentDate.getTime(), startDate.getTime(), currentDate.getTime() === startDate.getTime())
       result.push(new Date(currentDate)); // Добавляем копию текущей даты
     }
     currentDate.setDate(currentDate.getDate() + 1); // Переходим на следующий день
@@ -131,11 +127,19 @@ const labelDates = computed(() => {
 });
 
 const timelineGradient = computed(() => {
-  if (!selectedDate.value) return `linear-gradient(to right, #F9DB99 0, #5F6062 0)`;
+  if (!_selectedDate.value) return `linear-gradient(to right, #F9DB99 0, #5F6062 0)`;
 
-  return `linear-gradient(to right, #F9DB99 ${calculateTimelinePositionOnTime(selectedDate.value)}%, #5F6062 ${calculateTimelinePositionOnTime(selectedDate.value)}%)`;
+  return `linear-gradient(to right, #F9DB99 ${calculateTimelinePositionOnTime(_selectedDate.value)}%, #5F6062 ${calculateTimelinePositionOnTime(_selectedDate.value)}%)`;
 });
 
+watch(
+    () => selectedDate,
+    (newValue) => {
+      if (newValue.getTime() < startDate.getTime() || newValue.getTime() > endDate.getTime()) return;
+      _selectedDate.value = newValue;
+      emit('update:selectedDate', newValue);
+    },
+);
 </script>
 
 <template>
@@ -148,7 +152,7 @@ const timelineGradient = computed(() => {
           :class="{
             'timeline-label': true,
             'timeline-label--with-line': date.getTime() !== startDate.getTime(),
-            'timeline-label--past-date': selectedDate && date.getTime() < selectedDate?.getTime()
+            'timeline-label--past-date': _selectedDate && date.getTime() < _selectedDate?.getTime()
           }"
           :style="{ left: `calc(${calculateTimelinePositionOnTime(new Date(date))}% + 5px)` }"
       >
@@ -172,7 +176,7 @@ const timelineGradient = computed(() => {
         :hide-on-outside-click="false"
     >
       <template #content>
-        {{ selectedDate && formatDate(selectedDate, true) }}
+        {{ _selectedDate && formatDate(_selectedDate, true) }}
       </template>
     </DxTooltip>
   </div>
