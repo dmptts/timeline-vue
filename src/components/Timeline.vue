@@ -19,7 +19,7 @@ const { startDate, endDate, selectedDate } = defineProps({
 
 const emit = defineEmits(['update:selectedDate']);
 
-const timeline = ref<HTMLElement | null>(null);
+const timelineAxis = ref<HTMLElement | null>(null);
 const _selectedDate = ref<Date | null>(selectedDate);
 const isCursorTooltipVisible = ref(false);
 const isSelectedDateTooltipVisible = ref(false);
@@ -46,18 +46,18 @@ const onClick = () => {
 };
 
 const calculateCursorTimelineX = (clientX: number) => {
-  if (!timeline.value) return 0;
+  if (!timelineAxis.value) return 0;
 
-  const timelineRect = timeline.value.getBoundingClientRect();
+  const timelineRect = timelineAxis.value.getBoundingClientRect();
 
   // Получаем положение курсора относительно таймлайна
   return clientX - timelineRect.left;
 };
 
 const calculateTimeOnTimelinePosition = (timelineX: number) => {
-  if (!timeline.value) return null;
+  if (!timelineAxis.value) return null;
 
-  const timelineWidth = timeline.value.getBoundingClientRect().width;
+  const timelineWidth = timelineAxis.value.getBoundingClientRect().width;
 
   // Получаем положение курсора относительно левого края таймлайна
   const percentage = timelineX / timelineWidth;
@@ -97,9 +97,9 @@ const cursorTooltipPosition = computed(() => ({
 }));
 
 const selectedDateTooltipPosition = computed(() => {
-  if (!timeline.value || !_selectedDate.value) return null;
+  if (!timelineAxis.value || !_selectedDate.value) return null;
 
-  const timelineWidth = timeline.value.getBoundingClientRect().width;
+  const timelineWidth = timelineAxis.value.getBoundingClientRect().width;
   const datePosition = calculateTimelinePositionOnTime(_selectedDate.value);
 
   if (!datePosition) return null;
@@ -126,10 +126,8 @@ const labelDates = computed(() => {
   return result;
 });
 
-const timelineGradient = computed(() => {
-  if (!_selectedDate.value) return `linear-gradient(to right, #F9DB99 0, #5F6062 0)`;
-
-  return `linear-gradient(to right, #F9DB99 ${calculateTimelinePositionOnTime(_selectedDate.value)}%, #5F6062 ${calculateTimelinePositionOnTime(_selectedDate.value)}%)`;
+const selectedDatePosition = computed(() => {
+  return _selectedDate.value ? calculateTimelinePositionOnTime(_selectedDate.value) : 0;
 });
 
 watch(
@@ -144,8 +142,16 @@ watch(
 
 <template>
   <div class="container">
-    <div ref="timeline" id="timeline" class="timeline" @mousemove="onMouseMove" @mouseleave="onMouseLeave"
-         @click="onClick" :style="{ background: timelineGradient }">
+    <div class="timeline">
+      <div
+          ref="timelineAxis"
+          id="timeline-axis"
+          class="timeline-axis"
+          @mousemove="onMouseMove"
+          @mouseleave="onMouseLeave"
+          @click="onClick"
+          :style="{ '--progress-width': `${selectedDatePosition}%` }"
+      ></div>
       <div
           v-for="(date, index) in labelDates"
           :key="index"
@@ -161,7 +167,7 @@ watch(
       <div class="current-time-mark" :style="{ left: `${calculateTimelinePositionOnTime(new Date())}%`}"></div>
     </div>
     <DxTooltip
-        target="#timeline"
+        target="#timeline-axis"
         :visible="isCursorTooltipVisible"
         :position="cursorTooltipPosition"
     >
@@ -170,7 +176,7 @@ watch(
       </template>
     </DxTooltip>
     <DxTooltip
-        target="#timeline"
+        target="#timeline-axis"
         :visible="isSelectedDateTooltipVisible"
         :position="selectedDateTooltipPosition"
         :hide-on-outside-click="false"
@@ -185,18 +191,36 @@ watch(
 <style scoped>
 .container {
   width: 100%;
-  margin: 20px auto;
+  margin: 0 auto;
+  padding-top: 10px;
+  padding-bottom: 30px;
   text-align: center;
 }
 
 .timeline {
   position: relative;
+}
+
+.timeline-axis {
+  --progress-width: 0;
+  position: relative;
   width: 100%;
   height: 8px;
-  background: linear-gradient(to right, #F9DB99 0, #5F6062 0);
+  background-color: #5F6062;
   border-radius: 4px;
-  margin-top: 20px;
   cursor: pointer;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: var(--progress-width);
+    background-color: #F9DB99;
+    transition: width 0.5s ease;
+  }
 }
 
 .current-time-mark {
