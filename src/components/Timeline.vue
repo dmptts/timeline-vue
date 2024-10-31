@@ -133,8 +133,14 @@ const selectedDatePosition = computed(() => {
 watch(
     () => selectedDate,
     (newValue) => {
-      if (newValue.getTime() < startDate.getTime() || newValue.getTime() > endDate.getTime()) return;
-      _selectedDate.value = newValue;
+      if (newValue.getTime() < startDate.getTime()) {
+        _selectedDate.value = startDate;
+      } else if (newValue.getTime() > endDate.getTime()) {
+        _selectedDate.value = endDate;
+      } else {
+        _selectedDate.value = newValue;
+      }
+
       emit('update:selectedDate', newValue);
     },
 );
@@ -230,6 +236,8 @@ watch(
   height: 12px;
   background: #FE3D3D;
   border-radius: 50%;
+  pointer-events: none;
+  transform: translateX(-50%);
 
   &::before {
     position: absolute;
