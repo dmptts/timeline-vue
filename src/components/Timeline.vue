@@ -2,25 +2,17 @@
 import { DxTooltip } from 'devextreme-vue';
 import { computed, ref, watch } from 'vue';
 
-const { startDate, endDate, selectedDate } = defineProps({
-  startDate: {
-    type: Date,
-    required: true,
-  },
-  endDate: {
-    type: Date,
-    required: true,
-  },
-  selectedDate: {
-    type: Date,
-    default: null,
-  },
-});
+const { startDate, endDate, selectedDate } = defineProps<{
+  startDate: Date;
+  endDate: Date;
+  selectedDate?: Date | null;
+}>();
 
 const emit = defineEmits(['update:selectedDate']);
 
 const timelineAxis = ref<HTMLElement | null>(null);
-const _selectedDate = ref<Date | null>(selectedDate);
+
+const _selectedDate = ref<Date | null>(selectedDate ?? null);
 const isCursorTooltipVisible = ref(false);
 const isSelectedDateTooltipVisible = ref(false);
 const tooltipDate = ref<Date | null>(null);
@@ -111,16 +103,31 @@ const selectedDateTooltipPosition = computed(() => {
   });
 });
 
+const maxLabelsCount = computed(() => {
+  if (!timelineAxis.value) return;
+
+  const LABEL_MAX_WIDTH = 150;
+  const timelineAxisWidth = timelineAxis.value.getBoundingClientRect().width;
+
+  return Math.floor(timelineAxisWidth / LABEL_MAX_WIDTH);
+})
+
 const labelDates = computed(() => {
   const result: Date[] = [];
-  const currentDate = new Date(startDate);
+  const DAY = 24 * 60 * 60 * 1000;
+
+  if (!maxLabelsCount.value || maxLabelsCount.value < 1) return result;
+
+  const totalDuration = endDate.getTime() - startDate.getTime();
+  const interval = Math.max(totalDuration / (maxLabelsCount.value - 1), DAY);
+
+  let currentDate = new Date(startDate);
   currentDate.setHours(0, 0, 0, 0);
 
-  while (currentDate.getTime() < endDate.getTime()) {
-    if (currentDate.getTime() >= startDate.getTime()) {
-      result.push(new Date(currentDate)); // Добавляем копию текущей даты
-    }
-    currentDate.setDate(currentDate.getDate() + 1); // Переходим на следующий день
+  while (currentDate < endDate) {
+    result.push(new Date(currentDate));
+    currentDate = new Date(currentDate.getTime() + interval);
+    currentDate.setHours(0, 0, 0, 0);
   }
 
   return result;
@@ -133,15 +140,13 @@ const selectedDatePosition = computed(() => {
 watch(
     () => selectedDate,
     (newValue) => {
-      if (newValue.getTime() < startDate.getTime()) {
-        _selectedDate.value = startDate;
-      } else if (newValue.getTime() > endDate.getTime()) {
-        _selectedDate.value = endDate;
-      } else {
-        _selectedDate.value = newValue;
-      }
+      if (!newValue) return;
 
-      emit('update:selectedDate', newValue);
+      const clampedDate = new Date(
+          Math.min(Math.max(newValue.getTime(), startDate.getTime()), endDate.getTime()),
+      );
+      _selectedDate.value = clampedDate;
+      emit('update:selectedDate', clampedDate);
     },
 );
 </script>
@@ -170,7 +175,10 @@ watch(
       >
         {{ formatDate(date) }}
       </div>
-      <div class="current-time-mark" :style="{ left: `${calculateTimelinePositionOnTime(new Date())}%`}"></div>
+      <div
+          v-if="new Date().getTime() >= startDate.getTime() && new Date().getTime() <= endDate.getTime()"
+          :style="{ left: `${calculateTimelinePositionOnTime(new Date())}%` }"
+          class="current-time-mark"></div>
     </div>
     <DxTooltip
         target="#timeline-axis"
